@@ -6,11 +6,6 @@ import pandas as pd
 import numpy as np
 import joblib
 import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics import (confusion_matrix, ConfusionMatrixDisplay,
-                              roc_curve, roc_auc_score,
-                              accuracy_score, f1_score)
-from sklearn.model_selection import train_test_split
 
 # ── Page Config ────────────────────────────────────────────────
 st.set_page_config(
@@ -24,26 +19,34 @@ st.set_page_config(
 @st.cache_resource
 def load_artifacts():
     rf       = joblib.load('model/rf_model.pkl')
-    lr       = joblib.load('model/lr_model.pkl')
     scaler   = joblib.load('model/scaler.pkl')
     features = joblib.load('model/feature_names.pkl')
     cat_map  = joblib.load('model/category_mapping.pkl')
-    return rf, lr, scaler, features, cat_map
+    return rf, scaler, features, cat_map
 
 @st.cache_data
 def load_data():
-    return pd.read_csv('data/influencers_scored.csv')
+    df = pd.read_csv('data/influencers_scored.csv')
+    # Remove adult content
+    df = df[~df['category'].str.lower().str.contains(
+        'adult', na=False
+    )]
+    return df
 
-rf, lr, scaler, FEATURES, cat_map = load_artifacts()
+rf, scaler, FEATURES, cat_map = load_artifacts()
 df = load_data()
+
+# Remove adult from category mapping
+cat_map = {k: v for k, v in cat_map.items()
+           if 'adult' not in k.lower()}
 
 # ── Sidebar ────────────────────────────────────────────────────
 st.sidebar.title("Filters")
 
 tiers = st.sidebar.multiselect(
     "Influencer Tier",
-    options=['Mega', 'Macro', 'Micro', 'Nano', 'Non-Influencer'],
-    default=['Mega', 'Macro', 'Micro', 'Nano']
+    options=['Mega', 'Macro', 'Micro', 'Non-Influencer'],
+    default=['Mega', 'Macro', 'Micro']
 )
 
 min_score = st.sidebar.slider(
@@ -79,8 +82,7 @@ filtered = filtered.sort_values(
 
 # ── Header ─────────────────────────────────────────────────────
 st.title("📸 Instagram Influencer Detection")
-st.caption("B.Tech 4th Semester · ML Project · "
-           "Random Forest vs Logistic Regression")
+st.caption("B.Tech 4th Semester · ML Project · Random Forest")
 st.divider()
 
 # ── KPI Cards ──────────────────────────────────────────────────
@@ -93,10 +95,9 @@ k5.metric("Categories",    filtered['category'].nunique())
 st.divider()
 
 # ── Tabs ───────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3 = st.tabs([
     "🏆 Leaderboard",
     "📊 Analytics",
-    "🤖 Model Performance",
     "🔍 Predict"
 ])
 
@@ -116,7 +117,6 @@ with tab1:
             'Mega'          : 'background-color: #1565C0; color: white',
             'Macro'         : 'background-color: #1976D2; color: white',
             'Micro'         : 'background-color: #42A5F5; color: white',
-            'Nano'          : 'background-color: #90CAF9; color: #0D47A1',
             'Non-Influencer': 'background-color: #EEEEEE; color: #616161'
         }
         return colors.get(val, '')
@@ -158,8 +158,7 @@ with tab2:
             tier_counts,
             labels=tier_counts.index,
             autopct='%1.1f%%',
-            colors=['#0D47A1', '#1565C0', '#42A5F5',
-                    '#90CAF9', '#E3F2FD'],
+            colors=['#0D47A1', '#1565C0', '#42A5F5', '#E3F2FD'],
             startangle=140
         )
         st.pyplot(fig)
@@ -211,98 +210,9 @@ with tab2:
     plt.close()
 
 # ══════════════════════════════════════════════════════════════
-# TAB 3 — MODEL PERFORMANCE
+# TAB 3 — PREDICT
 # ══════════════════════════════════════════════════════════════
 with tab3:
-    st.subheader("Model Performance Comparison")
-    st.info("Models trained on 80% data, evaluated on 20% holdout set.")
-
-    X_all = scaler.transform(df[FEATURES])
-    y_true = df['is_top_influencer']
-
-    _, X_test_s, _, y_test_s = train_test_split(
-        X_all, y_true,
-        test_size=0.2,
-        random_state=42,
-        stratify=y_true
-    )
-
-    y_pred_rf  = rf.predict(X_test_s)
-    y_pred_lr  = lr.predict(X_test_s)
-    y_proba_rf = rf.predict_proba(X_test_s)[:, 1]
-    y_proba_lr = lr.predict_proba(X_test_s)[:, 1]
-
-    # Metrics table
-    metrics_data = {
-        'Model'    : ['Random Forest', 'Logistic Regression'],
-        'Accuracy' : [f"{accuracy_score(y_test_s, y_pred_rf):.4f}",
-                      f"{accuracy_score(y_test_s, y_pred_lr):.4f}"],
-        'F1 Score' : [f"{f1_score(y_test_s, y_pred_rf):.4f}",
-                      f"{f1_score(y_test_s, y_pred_lr):.4f}"],
-        'ROC-AUC'  : [f"{roc_auc_score(y_test_s, y_proba_rf):.4f}",
-                      f"{roc_auc_score(y_test_s, y_proba_lr):.4f}"]
-    }
-    st.dataframe(
-        pd.DataFrame(metrics_data),
-        use_container_width=True
-    )
-
-    m1, m2 = st.columns(2)
-
-    with m1:
-        st.markdown("**Confusion Matrices**")
-        fig, axes = plt.subplots(1, 2, figsize=(10, 4))
-        for ax, pred, title in zip(
-            axes,
-            [y_pred_rf, y_pred_lr],
-            ['Random Forest', 'Logistic Regression']
-        ):
-            cm = confusion_matrix(y_test_s, pred)
-            ConfusionMatrixDisplay(
-                cm, display_labels=['Moderate', 'Top']
-            ).plot(ax=ax, colorbar=False, cmap='Blues')
-            ax.set_title(title)
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close()
-
-    with m2:
-        st.markdown("**ROC Curve**")
-        fig, ax = plt.subplots(figsize=(5, 4))
-        for proba, name, color in [
-            (y_proba_rf, 'Random Forest',       '#1565C0'),
-            (y_proba_lr, 'Logistic Regression', '#90CAF9')
-        ]:
-            fpr, tpr, _ = roc_curve(y_test_s, proba)
-            auc = roc_auc_score(y_test_s, proba)
-            ax.plot(fpr, tpr,
-                    label=f'{name} (AUC={auc:.3f})',
-                    color=color)
-        ax.plot([0, 1], [0, 1], 'k--', linewidth=0.8)
-        ax.set_xlabel('False Positive Rate')
-        ax.set_ylabel('True Positive Rate')
-        ax.legend(fontsize=9)
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close()
-
-    st.markdown("**Feature Importance (Random Forest)**")
-    importances = pd.Series(
-        rf.feature_importances_, index=FEATURES
-    ).sort_values(ascending=True)
-    fig, ax = plt.subplots(figsize=(7, 3))
-    colors = ['#1565C0' if v == importances.max()
-              else '#90CAF9' for v in importances]
-    importances.plot(kind='barh', ax=ax, color=colors)
-    ax.set_xlabel('Importance')
-    plt.tight_layout()
-    st.pyplot(fig)
-    plt.close()
-
-# ══════════════════════════════════════════════════════════════
-# TAB 4 — PREDICT
-# ══════════════════════════════════════════════════════════════
-with tab4:
     st.subheader("Predict — New Instagram Account")
     st.markdown("Enter account details to get the influencer score.")
 
@@ -326,11 +236,7 @@ with tab4:
     with c3:
         inp_category = st.selectbox(
             "Category",
-            options=list(cat_map.keys())
-        )
-        model_choice = st.radio(
-            "Model to use",
-            options=['Random Forest', 'Logistic Regression']
+            options=sorted(list(cat_map.keys()))
         )
 
     if st.button("Get Influencer Score", type="primary"):
@@ -344,14 +250,12 @@ with tab4:
                                    consistency, cat_enc]])
         input_scaled = scaler.transform(input_arr)
 
-        model = rf if model_choice == 'Random Forest' else lr
-        prob  = model.predict_proba(input_scaled)[0][1]
+        prob  = rf.predict_proba(input_scaled)[0][1]
         score = round(prob * 100, 2)
 
         tier = ('Mega'           if score >= 80 else
                 'Macro'          if score >= 60 else
                 'Micro'          if score >= 40 else
-                'Nano'           if score >= 20 else
                 'Non-Influencer')
 
         st.divider()
@@ -360,4 +264,3 @@ with tab4:
         r2.metric("Tier",             tier)
         r3.metric("Engagement Rate",  f"{eng_rate:.3f}%")
         st.progress(int(score))
-        st.caption(f"Predicted using: {model_choice}")
