@@ -152,15 +152,41 @@ with tab2:
 
     with col1:
         st.markdown("**Tier Distribution**")
-        tier_counts = df['tier'].value_counts()
+        
+        # Remove Nano from the chart data
+        tier_counts = df[df['tier'] != 'Nano']['tier'].value_counts()
+        
+        tier_colors = {
+            'Mega'          : '#0D47A1',
+            'Macro'         : '#1976D2',
+            'Micro'         : '#42A5F5',
+            'Non-Influencer': '#E3F2FD'
+        }
+        colors = [tier_colors.get(t, '#90CAF9') for t in tier_counts.index]
+
         fig, ax = plt.subplots(figsize=(5, 4))
-        ax.pie(
+        wedges, texts, autotexts = ax.pie(
             tier_counts,
-            labels=tier_counts.index,
+            labels=None,           # remove labels from pie itself
             autopct='%1.1f%%',
-            colors=['#0D47A1', '#1565C0', '#42A5F5', '#E3F2FD'],
-            startangle=140
+            colors=colors,
+            startangle=140,
+            pctdistance=0.75
         )
+        # Add clean legend instead of overlapping labels
+        ax.legend(
+            wedges,
+            tier_counts.index,
+            loc='lower center',
+            bbox_to_anchor=(0.5, -0.15),
+            ncol=2,
+            fontsize=9
+        )
+        for autotext in autotexts:
+            autotext.set_fontsize(9)
+            autotext.set_color('white')
+
+        plt.tight_layout()
         st.pyplot(fig)
         plt.close()
 
