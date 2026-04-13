@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 # ── Page Config ────────────────────────────────────────────────
 st.set_page_config(
     page_title="Influencer Detection",
-    page_icon="📸",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -81,8 +80,7 @@ filtered = filtered.sort_values(
 ).head(top_n)
 
 # ── Header ─────────────────────────────────────────────────────
-st.title("📸 Instagram Influencer Detection")
-st.caption("B.Tech 4th Semester · ML Project · Random Forest")
+st.title("Instagram Influencer Detection")
 st.divider()
 
 # ── KPI Cards ──────────────────────────────────────────────────
@@ -160,7 +158,7 @@ with tab2:
             'Mega'          : '#0D47A1',
             'Macro'         : '#1976D2',
             'Micro'         : '#42A5F5',
-            'Non-Influencer': '#E3F2FD'
+            'Non-Influencer': "#76797B"
         }
         colors = [tier_colors.get(t, '#90CAF9') for t in tier_counts.index]
 
