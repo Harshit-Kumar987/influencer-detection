@@ -80,7 +80,7 @@ st.divider()
 if st.button("Detect Influencer Type", type="primary",
              use_container_width=True):
 
-    # Engineer features — same as notebook
+    # Engineer features
     engagement_rate = (
         (avg_likes_per_post +
          avg_comments_per_post +
@@ -107,38 +107,20 @@ if st.button("Detect Influencer Type", type="primary",
     probabilities = rf.predict_proba(input_scaled)[0]
 
     predicted_label = class_names[prediction]
-    icon, bg, fg    = TIER_STYLE[predicted_label]
+    confidence      = max(probabilities) * 100
 
-    # ── Result ─────────────────────────────────────────────────
-    st.markdown(f"""
-    <div style="
-        background-color: {bg};
-        color: {fg};
-        padding: 24px;
-        border-radius: 12px;
-        text-align: center;
-        font-size: 28px;
-        font-weight: bold;
-        margin-bottom: 16px;
-    ">
-        {icon} {predicted_label}
-    </div>
-    """, unsafe_allow_html=True)
+    # Status mapping
+    STATUS = {
+        'Real Influencer'    : 'Influencer',
+        'Growing Influencer' : 'Growing Influencer',
+        'Normal User'        : 'Not Influencer',
+        'Fake Influencer'    : 'Fake / Bot Account',
+    }
 
-    # ── Probability Bars ───────────────────────────────────────
-    st.markdown("**Confidence per class:**")
-    for i, (cls, prob) in enumerate(
-        zip(class_names, probabilities)
-    ):
-        icon_c = TIER_STYLE[cls][0]
-        st.markdown(f"{icon_c} **{cls}**")
-        st.progress(float(prob),
-                    text=f"{prob * 100:.1f}%")
-
-    # ── Computed Metrics ───────────────────────────────────────
     st.divider()
-    st.markdown("**Computed Metrics from your inputs:**")
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Engagement Rate",    f"{engagement_rate:.2f}%")
-    m2.metric("Follow Ratio",       f"{follow_ratio:.2f}")
-    m3.metric("Likes / Views",      f"{likes_views_ratio:.3f}")
+    st.markdown("### Result")
+    st.markdown(f"**User Type:** {predicted_label}")
+    st.markdown(f"**Status:** {STATUS[predicted_label]}")
+    st.markdown(f"**Confidence:** {confidence:.1f}%")
+    st.markdown(f"**Engagement Rate:** {engagement_rate:.2f}%")
+    st.markdown(f"**Views Ratio:** {likes_views_ratio:.3f}")
