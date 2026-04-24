@@ -9,7 +9,6 @@ import joblib
 # ── Page Config ────────────────────────────────────────────────
 st.set_page_config(
     page_title="Influencer Detection",
-    page_icon="📸",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
@@ -34,8 +33,8 @@ TIER_STYLE = {
 }
 
 # ── Header ─────────────────────────────────────────────────────
-st.title("📸 Influencer Detection")
-st.caption("B.Tech 4th Semester · ML Project · Random Forest")
+st.title("Influencer Detection")
+st.caption("")
 st.divider()
 
 # ── Input Form ─────────────────────────────────────────────────
